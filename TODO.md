@@ -14,7 +14,7 @@
 ### Process management
 - [x] `rider_list_processes` — список процессов Rider
 - [x] `rider_kill_process` — убить процесс по имени
-- [ ] Показывать PID и command line процессов
+- [x] Показывать PID и command line процессов
 - [ ] Фильтрация по типу (MSBuild, compiler, test runner, dev server)
 
 ### IDE State
@@ -35,7 +35,7 @@
 - [x] `rider_run_tests` — запуск тестов (auto-detect config или по имени)
 - [x] `rider_get_output` — единый polling tool для build/test/любых сессий
 - [x] `rider_rerun_failed_tests` — перезапуск упавших через IDE action
-- [ ] Дерево результатов с stack traces (извлечение из SMTestProxy)
+- [x] Дерево результатов с stack traces (извлечение из SMTestProxy)
 - [ ] Фильтрация: запуск тестов по file/class/method
 
 ### Run/Debug Configuration Management

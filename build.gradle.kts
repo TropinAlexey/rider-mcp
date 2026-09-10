@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.github.tropin"
-version = "0.4.0"
+version = "0.5.0"
 
 repositories {
     mavenCentral()
@@ -30,7 +30,7 @@ intellijPlatform {
             sinceBuild = "243"
         }
         changeNotes = """
-            v0.4.0: Run/Debug Configuration CRUD (create, update, delete).
+            v0.5.0: Test results tree with stack traces (rider_get_test_results). Process PID/cmdline in rider_list_processes.
         """.trimIndent()
     }
 }

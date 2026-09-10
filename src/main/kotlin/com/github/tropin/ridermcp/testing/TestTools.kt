@@ -9,6 +9,9 @@ import com.intellij.execution.process.ProcessAdapter
 import com.intellij.execution.process.ProcessEvent
 import com.intellij.execution.process.ProcessHandler
 import com.intellij.execution.runners.ExecutionEnvironment
+import com.intellij.execution.testframework.AbstractTestProxy
+import com.intellij.execution.testframework.sm.runner.SMTestProxy
+import com.intellij.execution.testframework.sm.runner.ui.SMTestRunnerResultsForm
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Key
@@ -19,6 +22,7 @@ import org.jetbrains.ide.mcp.NoArgs
 import org.jetbrains.ide.mcp.Response
 import org.jetbrains.mcpserverplugin.AbstractMcpTool
 import com.github.tropin.ridermcp.SessionManager
+import com.github.tropin.ridermcp.build.SessionIdArgs
 import com.github.tropin.ridermcp.mcpJson
 
 @Serializable
@@ -26,7 +30,7 @@ data class RunTestsArgs(val configName: String? = null)
 
 class RunTestsTool : AbstractMcpTool<RunTestsArgs>(RunTestsArgs.serializer()) {
     override val name = "rider_run_tests"
-    override val description = "Runs tests. Omit configName to auto-detect; if multiple test configs exist, returns their names. Poll with rider_get_output."
+    override val description = "Runs tests. Omit configName to auto-detect; if multiple test configs exist, returns their names. Poll with rider_get_output, then rider_get_test_results for tree."
 
     override fun handle(project: Project, args: RunTestsArgs): Response {
         val runManager = RunManager.getInstance(project)
@@ -62,6 +66,7 @@ class RunTestsTool : AbstractMcpTool<RunTestsArgs>(RunTestsArgs.serializer()) {
                 override fun processStarted(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
                     if (env.runProfile.name != configName) return
                     connection.disconnect()
+                    session.tag = handler
                     handler.addProcessListener(object : ProcessAdapter() {
                         override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
                             val text = event.text.trimEnd('\n', '\r')
@@ -82,6 +87,75 @@ class RunTestsTool : AbstractMcpTool<RunTestsArgs>(RunTestsArgs.serializer()) {
     }
 }
 
+class GetTestResultsTool : AbstractMcpTool<SessionIdArgs>(SessionIdArgs.serializer()) {
+    override val name = "rider_get_test_results"
+    override val description = "Returns structured test results tree with statuses, durations, error messages and stack traces. Call after test session completes."
+
+    override fun handle(project: Project, args: SessionIdArgs): Response {
+        val session = SessionManager.get(args.sessionId)
+            ?: return Response(error = "Session '${args.sessionId}' not found")
+
+        if (session.status == "running") {
+            return Response(error = "Tests still running, wait for completion")
+        }
+
+        val handler = session.tag as? ProcessHandler
+            ?: return Response(error = "No process handler captured for this session")
+
+        val descriptors = ExecutionManager.getInstance(project).getRunningDescriptors { true }
+        val descriptor = descriptors.find { it.processHandler === handler }
+            ?: return Response(error = "Execution descriptor not found (tab may have been closed)")
+
+        val console = descriptor.executionConsole ?: return Response(error = "No console available")
+
+        val root = try {
+            val resultsForm = findResultsForm(console) ?: return Response(error = "No test results form found")
+            resultsForm.testsRootNode
+        } catch (e: Exception) {
+            return Response(error = "Cannot extract test tree: ${e.message}")
+        }
+
+        val tree = extractTestNode(root)
+        return Response(tree.toString())
+    }
+
+    private fun findResultsForm(console: Any): SMTestRunnerResultsForm? {
+        if (console is SMTestRunnerResultsForm) return console
+        // SMTestRunnerConsoleView wraps results form
+        try {
+            val method = console.javaClass.getMethod("getResultsViewer")
+            val viewer = method.invoke(console)
+            if (viewer is SMTestRunnerResultsForm) return viewer
+        } catch (_: Exception) {}
+        return null
+    }
+
+    private fun extractTestNode(proxy: AbstractTestProxy): JsonObject {
+        return buildJsonObject {
+            put("name", proxy.name ?: "")
+            put("leaf", proxy.isLeaf)
+            if (proxy is SMTestProxy) {
+                put("status", when {
+                    proxy.isPassed -> "passed"
+                    proxy.isDefect -> "failed"
+                    proxy.isIgnored -> "ignored"
+                    proxy.isInterrupted -> "interrupted"
+                    else -> "unknown"
+                })
+                proxy.duration?.let { put("durationMs", it) }
+                proxy.errorMessage?.let { put("error", it) }
+                proxy.stacktrace?.let { put("stacktrace", it) }
+            }
+            val children = proxy.children
+            if (children.isNotEmpty()) {
+                putJsonArray("children") {
+                    children.forEach { add(extractTestNode(it)) }
+                }
+            }
+        }
+    }
+}
+
 class RerunFailedTestsTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
     override val name = "rider_rerun_failed_tests"
     override val description = "Reruns previously failed tests via the IDE's Rerun Failed Tests action."
@@ -99,6 +173,7 @@ class RerunFailedTestsTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
             connection.subscribe(ExecutionManager.EXECUTION_TOPIC, object : ExecutionListener {
                 override fun processStarted(executorId: String, env: ExecutionEnvironment, handler: ProcessHandler) {
                     connection.disconnect()
+                    session.tag = handler
                     handler.addProcessListener(object : ProcessAdapter() {
                         override fun onTextAvailable(event: ProcessEvent, outputType: Key<*>) {
                             val text = event.text.trimEnd('\n', '\r')

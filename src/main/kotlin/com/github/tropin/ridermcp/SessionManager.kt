@@ -11,6 +11,7 @@ class OutputSession(
     @Volatile var status: String = "running"
     @Volatile var exitCode: Int? = null
     @Volatile var progress: Double = -1.0
+    @Volatile var tag: Any? = null
 
     private val lines = mutableListOf<String>()
     private var readCursor: Int = 0

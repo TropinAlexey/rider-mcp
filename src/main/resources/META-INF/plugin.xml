@@ -29,6 +29,7 @@
 
         <!-- Test runner -->
         <mcpTool implementation="com.github.tropin.ridermcp.testing.RunTestsTool"/>
+        <mcpTool implementation="com.github.tropin.ridermcp.testing.GetTestResultsTool"/>
         <mcpTool implementation="com.github.tropin.ridermcp.testing.RerunFailedTestsTool"/>
 
         <!-- Run config CRUD -->

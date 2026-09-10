@@ -1,9 +1,11 @@
 package com.github.tropin.ridermcp.process
 
 import com.intellij.execution.ExecutionManager
+import com.intellij.execution.process.OSProcessHandler
 import com.intellij.openapi.project.Project
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
 import org.jetbrains.ide.mcp.NoArgs
 import org.jetbrains.ide.mcp.Response
 import org.jetbrains.mcpserverplugin.AbstractMcpTool
@@ -11,15 +13,21 @@ import com.github.tropin.ridermcp.mcpJson
 
 class ListProcessesTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
     override val name = "rider_list_processes"
-    override val description = "Lists running processes managed by Rider. Returns array of display names for use with rider_kill_process."
+    override val description = "Lists running processes managed by Rider with PID and command line."
 
     override fun handle(project: Project, args: NoArgs): Response {
-        val names = ExecutionManager.getInstance(project).getRunningDescriptors { true }.mapNotNull { d ->
+        val processes = ExecutionManager.getInstance(project).getRunningDescriptors { true }.mapNotNull { d ->
             val handler = d.processHandler ?: return@mapNotNull null
             if (handler.isProcessTerminated || handler.isProcessTerminating) return@mapNotNull null
-            d.displayName ?: "unknown"
+            buildJsonObject {
+                put("name", d.displayName ?: "unknown")
+                if (handler is OSProcessHandler) {
+                    try { put("pid", handler.process.pid()) } catch (_: Exception) {}
+                    handler.commandLine?.let { put("commandLine", it) }
+                }
+            }
         }
-        return Response(mcpJson.encodeToString(names))
+        return Response(mcpJson.encodeToString(JsonArray(processes)))
     }
 }
 

@@ -2,7 +2,7 @@
 
 A JetBrains Rider plugin that extends the stock [MCP Server Plugin](https://github.com/JetBrains/mcp-server-plugin) with full IDE observability and control tools.
 
-**Current version: 0.4.0** — run config CRUD. [What's New →](#whats-new)
+**Current version: 0.5.0** — test results tree, process PID/cmdline. [What's New →](#whats-new)
 
 ## Why This Exists
 
@@ -28,7 +28,7 @@ This plugin bridges that gap. It gives any MCP-compatible client (Claude Code, C
 | Tool windows | ❌ | ✅ read any tool window content |
 | Notifications | ❌ | ✅ balloon messages, event log |
 | Programmer context | ❌ | ✅ open editors, cursor, selection |
-| Test runner | ❌ | ✅ run, poll, rerun failed |
+| Test runner | ❌ | ✅ run, poll, results tree with stack traces, rerun failed |
 | Run config CRUD | ❌ | ✅ create, update, delete |
 | .NET debugger | Partial (xdebug only) | 🔜 planned |
 | NuGet management | ❌ | 🔜 planned |
@@ -56,7 +56,7 @@ MCP tools are synchronous (request → response). For long-running operations li
 2. `rider_get_output("build_1")` → returns new lines since last call
 3. Repeat until `status` is no longer `"running"`
 
-## Available Tools (16)
+## Available Tools (17)
 
 ### Build (3 tools)
 | Tool | Description |
@@ -64,10 +64,11 @@ MCP tools are synchronous (request → response). For long-running operations li
 | `rider_start_build` | Start solution build, returns session ID |
 | `rider_cancel_build` | Cancel running build |
 
-### Test Runner (2 tools)
+### Test Runner (3 tools)
 | Tool | Args | Description |
 |---|---|---|
 | `rider_run_tests` | `configName?` | Run tests. Auto-detects config if one exists; lists available if multiple |
+| `rider_get_test_results` | `sessionId` | Structured test results tree with statuses, durations, errors, stack traces |
 | `rider_rerun_failed_tests` | — | Rerun previously failed tests |
 
 ### Shared Polling
@@ -78,7 +79,7 @@ MCP tools are synchronous (request → response). For long-running operations li
 ### Process Management (2 tools)
 | Tool | Description |
 |---|---|
-| `rider_list_processes` | List running processes (returns display names) |
+| `rider_list_processes` | List running processes with PID, command line, display name |
 | `rider_kill_process` | Kill a process by display name |
 
 ### IDE State (4 tools)
@@ -147,12 +148,21 @@ gradlew.bat runIde
 See [TODO.md](TODO.md) for the full prioritized roadmap.
 
 **Next up:**
-- P1: Test result tree with stack traces (SMTestProxy)
+- P1: Test filtering by file/class/method
 - P2: .NET Debugger (breakpoints, evaluate, step)
 - P2: NuGet management
 - P3: IDE Settings control
 
 ## What's New
+
+### v0.5.0
+
+**Test Results Tree**
+- `rider_get_test_results` — structured test tree with statuses (passed/failed/ignored), durations, error messages, and full stack traces
+- Extracted from IntelliJ's `SMTestProxy` tree after test execution completes
+
+**Process Observability**
+- `rider_list_processes` now includes PID and command line for each process
 
 ### v0.4.0
 
