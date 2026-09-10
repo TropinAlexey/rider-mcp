@@ -1,0 +1,37 @@
+<idea-plugin>
+    <id>com.github.tropina.rider-mcp</id>
+    <name>Rider MCP Extension</name>
+    <vendor url="https://github.com/tropina">tropina</vendor>
+
+    <description><![CDATA[
+        Extends the JetBrains MCP Server plugin with full IDE observability and control for Rider.
+        Build output streaming, process management, test runner, IDE state, .NET debugger, NuGet, settings.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.mcpServer</depends>
+
+    <!-- P0: Build observability -->
+    <extensions defaultExtensionNs="com.intellij.mcpServer">
+        <mcpTool implementation="com.github.tropina.ridermcp.build.StartBuildTool"/>
+        <mcpTool implementation="com.github.tropina.ridermcp.build.GetBuildOutputTool"/>
+        <mcpTool implementation="com.github.tropina.ridermcp.build.CancelBuildTool"/>
+
+        <!-- P0: Process management -->
+        <mcpTool implementation="com.github.tropina.ridermcp.process.ListProcessesTool"/>
+        <mcpTool implementation="com.github.tropina.ridermcp.process.KillProcessTool"/>
+
+        <!-- P0: IDE state -->
+        <mcpTool implementation="com.github.tropina.ridermcp.ide.GetIdeStateTool"/>
+        <mcpTool implementation="com.github.tropina.ridermcp.ide.GetNotificationsTool"/>
+        <mcpTool implementation="com.github.tropina.ridermcp.ide.GetToolWindowContentTool"/>
+        <mcpTool implementation="com.github.tropina.ridermcp.ide.ListToolWindowsTool"/>
+
+        <!-- P1: Programmer context -->
+        <mcpTool implementation="com.github.tropina.ridermcp.context.GetOpenEditorsTool"/>
+        <mcpTool implementation="com.github.tropina.ridermcp.context.GetCursorContextTool"/>
+        <mcpTool implementation="com.github.tropina.ridermcp.context.GetSelectionTool"/>
+        <mcpTool implementation="com.github.tropina.ridermcp.context.GetRecentFilesTool"/>
+        <mcpTool implementation="com.github.tropina.ridermcp.context.GetBookmarksTool"/>
+    </extensions>
+</idea-plugin>
