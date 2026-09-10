@@ -1,4 +1,4 @@
-package com.github.tropina.ridermcp.context
+package com.github.tropin.ridermcp.context
 
 import com.intellij.ide.bookmarks.BookmarkManager
 import com.intellij.openapi.application.runReadAction

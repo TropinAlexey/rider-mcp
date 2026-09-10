@@ -1,8 +1,9 @@
-package com.github.tropina.ridermcp.build
+package com.github.tropin.ridermcp.build
 
-import com.intellij.compiler.CompilerMessageImpl
+import com.intellij.ide.DataManager
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.application.ApplicationManager
-import com.intellij.openapi.compiler.*
 import com.intellij.openapi.project.Project
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -10,42 +11,42 @@ import kotlinx.serialization.json.Json
 import org.jetbrains.ide.mcp.NoArgs
 import org.jetbrains.ide.mcp.Response
 import org.jetbrains.mcpserverplugin.AbstractMcpTool
-import com.github.tropina.ridermcp.SessionManager
+import com.github.tropin.ridermcp.SessionManager
 
 private val json = Json { prettyPrint = false }
 
 class StartBuildTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
     override val name = "rider_start_build"
     override val description = """
-        Starts a solution build in Rider and returns a session ID for polling output.
-        Use rider_get_build_output with the returned sessionId to get streaming build output.
+        Starts a solution build in Rider via the Build Solution action and returns a session ID.
+        Use rider_get_build_output with the returned sessionId to poll build output.
         Returns: {"sessionId": "build_1"}
     """.trimIndent()
 
     override fun handle(project: Project, args: NoArgs): Response {
         val session = SessionManager.create("build")
 
+        // ponytail: trigger build via IDE action — works across all JetBrains IDEs
         ApplicationManager.getApplication().invokeLater {
-            val compiler = CompilerManager.getInstance(project)
-            compiler.make(project.modules()) { aborted, errors, warnings, context ->
-                if (aborted) {
-                    session.status = "cancelled"
-                } else if (errors > 0) {
-                    session.status = "failed"
-                    session.exitCode = 1
-                } else {
-                    session.status = "succeeded"
-                    session.exitCode = 0
-                }
-                session.appendLine("Build finished: ${if (aborted) "cancelled" else if (errors > 0) "$errors error(s)" else "success"}, $warnings warning(s)")
+            val actionManager = ActionManager.getInstance()
+            val buildAction = actionManager.getAction("CompileDirty")
+                ?: actionManager.getAction("BuildSolutionAction")
+
+            if (buildAction != null) {
+                val event = AnActionEvent.createFromAnAction(
+                    buildAction, null, "",
+                    DataManager.getInstance().getDataContext()
+                )
+                buildAction.actionPerformed(event)
+                session.appendLine("Build started")
+            } else {
+                session.status = "failed"
+                session.appendLine("No build action found")
             }
         }
 
         return Response(json.encodeToString(mapOf("sessionId" to session.id)))
     }
-
-    private fun Project.modules() =
-        com.intellij.openapi.module.ModuleManager.getInstance(this).modules
 }
 
 @Serializable
@@ -81,16 +82,14 @@ class CancelBuildTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
     """.trimIndent()
 
     override fun handle(project: Project, args: NoArgs): Response {
-        // ponytail: CompilerManager doesn't expose cancel directly; use the action
-        val actionManager = com.intellij.openapi.actionSystem.ActionManager.getInstance()
-        val action = actionManager.getAction("CompileDirty.Cancel")
-            ?: actionManager.getAction("Stop")
+        val actionManager = ActionManager.getInstance()
+        val action = actionManager.getAction("Stop")
 
         if (action != null) {
             ApplicationManager.getApplication().invokeLater {
-                val event = com.intellij.openapi.actionSystem.AnActionEvent.createFromAnAction(
+                val event = AnActionEvent.createFromAnAction(
                     action, null, "",
-                    com.intellij.ide.DataManager.getInstance().getDataContext()
+                    DataManager.getInstance().getDataContext()
                 )
                 action.actionPerformed(event)
             }

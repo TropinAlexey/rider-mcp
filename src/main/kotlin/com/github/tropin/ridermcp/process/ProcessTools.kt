@@ -1,4 +1,4 @@
-package com.github.tropina.ridermcp.process
+package com.github.tropin.ridermcp.process
 
 import com.intellij.execution.ExecutionManager
 import com.intellij.execution.process.ProcessHandler

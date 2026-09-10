@@ -1,4 +1,4 @@
-package com.github.tropina.ridermcp
+package com.github.tropin.ridermcp
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong

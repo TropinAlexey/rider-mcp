@@ -5,7 +5,7 @@ plugins {
     kotlin("plugin.serialization") version "1.9.24"
 }
 
-group = "com.github.tropina"
+group = "com.github.tropin"
 version = "0.1.0"
 
 repositories {
@@ -17,8 +17,7 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        // Rider — use RD for .NET-specific APIs
-        create("RD", "2024.3")
+        rider("2024.3", useInstaller = false)
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
         plugin("com.intellij.mcpServer", "1.0.30")
     }

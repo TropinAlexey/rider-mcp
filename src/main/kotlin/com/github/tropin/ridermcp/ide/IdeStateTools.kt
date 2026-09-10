@@ -1,4 +1,4 @@
-package com.github.tropina.ridermcp.ide
+package com.github.tropin.ridermcp.ide
 
 import com.intellij.notification.NotificationsManager
 import com.intellij.openapi.application.runReadAction

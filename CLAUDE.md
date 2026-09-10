@@ -26,7 +26,7 @@ IntelliJ/Rider плагин, расширяющий JetBrains MCP Server доп�
 ## Структура
 
 ```
-src/main/kotlin/com/github/tropina/ridermcp/
+src/main/kotlin/com/github/tropin/ridermcp/
 ├── SessionManager.kt       # Общая инфраструктура polling sessions
 ├── build/                   # P0: Build observability
 ├── process/                 # P0: Process management
