@@ -108,24 +108,28 @@ Responses are optimized to minimize token consumption by the MCP client:
 - [MCP Server Plugin](https://plugins.jetbrains.com/plugin/26071-mcp-server) installed and enabled
 
 ### From Source
+
 ```bash
-# Clone and build
-git clone https://github.com/tropin/rider-mcp.git
+git clone https://github.com/TropinAlexey/rider-mcp.git
 cd rider-mcp
+
+# Linux / macOS
 ./gradlew buildPlugin
 
-# Install the built plugin
-# Rider → Settings → Plugins → ⚙️ → Install Plugin from Disk
-# Select build/distributions/rider-mcp-*.zip
+# Windows
+gradlew.bat buildPlugin
 ```
 
+Then install: **Rider → Settings → Plugins → ⚙️ → Install Plugin from Disk → select `build/distributions/rider-mcp-*.zip`**
+
 ### Development
+
 ```bash
-# Run Rider with the plugin loaded for debugging
+# Run Rider with the plugin loaded (Linux/macOS)
 ./gradlew runIde
 
-# Verify plugin compatibility
-./gradlew verifyPlugin
+# Windows
+gradlew.bat runIde
 ```
 
 ## Roadmap
