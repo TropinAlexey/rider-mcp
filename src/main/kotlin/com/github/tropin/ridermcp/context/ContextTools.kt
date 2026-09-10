@@ -2,163 +2,107 @@ package com.github.tropin.ridermcp.context
 
 import com.intellij.ide.bookmarks.BookmarkManager
 import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.impl.EditorHistoryManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.guessProjectDir
+import com.intellij.openapi.util.TextRange
 import com.intellij.openapi.vfs.toNioPathOrNull
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.*
 import org.jetbrains.ide.mcp.NoArgs
 import org.jetbrains.ide.mcp.Response
 import org.jetbrains.mcpserverplugin.AbstractMcpTool
-import java.nio.file.Path
+import com.github.tropin.ridermcp.mcpJson
+import com.github.tropin.ridermcp.projectDir
+import com.github.tropin.ridermcp.relTo
 
-private val json = Json { prettyPrint = false }
-
-private fun Project.projectDir(): Path? = guessProjectDir()?.toNioPathOrNull()
-
-private fun Path.rel(projectDir: Path?): String =
-    projectDir?.relativize(this)?.toString() ?: this.toString()
-
-class GetOpenEditorsTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
-    override val name = "rider_get_open_editors"
-    override val description = """
-        Returns all open editor tabs with their file paths, ordered by most recently used.
-        Shows which file is currently active.
-    """.trimIndent()
+class GetContextTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
+    override val name = "rider_get_context"
+    override val description = "Returns programmer's current focus: active file with cursor and surrounding code, selection if any, other open editors, and bookmarks."
 
     override fun handle(project: Project, args: NoArgs): Response {
+        val projectDir = project.projectDir()
         val fem = FileEditorManager.getInstance(project)
-        val projectDir = project.projectDir()
-        val activeFile = fem.selectedTextEditor?.virtualFile
+        val fdm = FileDocumentManager.getInstance()
 
-        val editors = fem.openFiles.map { file ->
-            val path = file.toNioPathOrNull()?.rel(projectDir) ?: file.path
-            mapOf(
-                "path" to path,
-                "isActive" to (file == activeFile),
-                "isModified" to (com.intellij.openapi.fileEditor.FileDocumentManager.getInstance()
-                    .getDocument(file)?.let {
-                        com.intellij.openapi.fileEditor.FileDocumentManager.getInstance().isDocumentUnsaved(it)
-                    } ?: false)
-            )
-        }
-        return Response(json.encodeToString(editors))
-    }
-}
+        val result = buildJsonObject {
+            val b = this
 
-class GetCursorContextTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
-    override val name = "rider_get_cursor_context"
-    override val description = """
-        Returns the current cursor position: file path, line number, column, and surrounding lines of code.
-        Useful for understanding what the programmer is looking at right now.
-    """.trimIndent()
+            runReadAction {
+                val editor = fem.selectedTextEditor ?: return@runReadAction
+                val vf = editor.virtualFile ?: return@runReadAction
+                b.put("file", vf.toNioPathOrNull()?.relTo(projectDir) ?: vf.path)
 
-    override fun handle(project: Project, args: NoArgs): Response = runReadAction {
-        val editor = FileEditorManager.getInstance(project).selectedTextEditor
-            ?: return@runReadAction Response(error = "No active editor")
+                val caret = editor.caretModel.primaryCaret
+                val line = caret.logicalPosition.line
+                b.put("line", line + 1)
+                b.put("column", caret.logicalPosition.column + 1)
 
-        val projectDir = project.projectDir()
-        val filePath = editor.virtualFile?.toNioPathOrNull()?.rel(projectDir) ?: "unknown"
-        val caret = editor.caretModel.primaryCaret
-        val line = caret.logicalPosition.line
-        val column = caret.logicalPosition.column
-        val document = editor.document
-        val totalLines = document.lineCount
+                val doc = editor.document
+                val ctxStart = maxOf(0, line - 5)
+                val ctxEnd = minOf(doc.lineCount - 1, line + 5)
+                b.put("context", (ctxStart..ctxEnd).joinToString("\n") { ln ->
+                    val s = doc.getLineStartOffset(ln)
+                    val e = doc.getLineEndOffset(ln)
+                    "${if (ln == line) ">>> " else "    "}${ln + 1}: ${doc.getText(TextRange(s, e))}"
+                })
 
-        val contextStart = maxOf(0, line - 5)
-        val contextEnd = minOf(totalLines - 1, line + 5)
-        val surroundingLines = (contextStart..contextEnd).map { lineNum ->
-            val start = document.getLineStartOffset(lineNum)
-            val end = document.getLineEndOffset(lineNum)
-            val prefix = if (lineNum == line) ">>> " else "    "
-            "$prefix${lineNum + 1}: ${document.getText(com.intellij.openapi.util.TextRange(start, end))}"
-        }
+                editor.selectionModel.selectedText?.takeIf { it.isNotEmpty() }?.let { text ->
+                    b.putJsonObject("selection") {
+                        put("text", text)
+                        put("startLine", doc.getLineNumber(editor.selectionModel.selectionStart) + 1)
+                        put("endLine", doc.getLineNumber(editor.selectionModel.selectionEnd) + 1)
+                    }
+                }
+            }
 
-        val result = mapOf(
-            "file" to filePath,
-            "line" to (line + 1),
-            "column" to (column + 1),
-            "totalLines" to totalLines,
-            "context" to surroundingLines.joinToString("\n")
-        )
-        Response(json.encodeToString(result))
-    }
-}
+            val activeVf = fem.selectedTextEditor?.virtualFile
+            val others = fem.openFiles.filter { it != activeVf }
+            if (others.isNotEmpty()) {
+                b.putJsonArray("openEditors") {
+                    others.forEach { add(it.toNioPathOrNull()?.relTo(projectDir) ?: it.path) }
+                }
+                val mod = others.filter { f ->
+                    fdm.getDocument(f)?.let { fdm.isDocumentUnsaved(it) } == true
+                }
+                if (mod.isNotEmpty()) {
+                    b.putJsonArray("modified") {
+                        mod.forEach { add(it.toNioPathOrNull()?.relTo(projectDir) ?: it.path) }
+                    }
+                }
+            }
 
-class GetSelectionTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
-    override val name = "rider_get_selection"
-    override val description = """
-        Returns the currently selected text in the active editor.
-        Returns empty if nothing is selected.
-    """.trimIndent()
-
-    override fun handle(project: Project, args: NoArgs): Response = runReadAction {
-        val editor = FileEditorManager.getInstance(project).selectedTextEditor
-            ?: return@runReadAction Response(error = "No active editor")
-
-        val selectedText = editor.selectionModel.selectedText
-        if (selectedText.isNullOrEmpty()) {
-            return@runReadAction Response(json.encodeToString(mapOf("selected" to false)))
+            try {
+                @Suppress("DEPRECATION")
+                val bookmarks = BookmarkManager.getInstance(project).validBookmarks
+                if (bookmarks.isNotEmpty()) {
+                    b.putJsonArray("bookmarks") {
+                        bookmarks.forEach { bm ->
+                            addJsonObject {
+                                put("file", bm.file?.toNioPathOrNull()?.relTo(projectDir) ?: "unknown")
+                                put("line", bm.line + 1)
+                                bm.description?.takeIf { it.isNotEmpty() }?.let { put("description", it) }
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
         }
 
-        val projectDir = project.projectDir()
-        val filePath = editor.virtualFile?.toNioPathOrNull()?.rel(projectDir) ?: "unknown"
-        val selStart = editor.selectionModel.selectionStart
-        val selEnd = editor.selectionModel.selectionEnd
-        val startLine = editor.document.getLineNumber(selStart) + 1
-        val endLine = editor.document.getLineNumber(selEnd) + 1
-
-        Response(json.encodeToString(mapOf(
-            "selected" to true,
-            "file" to filePath,
-            "startLine" to startLine,
-            "endLine" to endLine,
-            "text" to selectedText
-        )))
+        return Response(result.toString())
     }
 }
 
 class GetRecentFilesTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
     override val name = "rider_get_recent_files"
-    override val description = """
-        Returns the 20 most recently opened files, ordered by access time (newest first).
-        Shows what the programmer has been working on.
-    """.trimIndent()
+    override val description = "Returns the 20 most recently opened files (newest first)."
 
     override fun handle(project: Project, args: NoArgs): Response {
         val projectDir = project.projectDir()
-        val recentFiles = EditorHistoryManager.getInstance(project).fileList.takeLast(20).reversed()
-        val files = recentFiles.map { file ->
-            file.toNioPathOrNull()?.rel(projectDir) ?: file.path
+        val files = EditorHistoryManager.getInstance(project).fileList.takeLast(20).reversed().map { file ->
+            file.toNioPathOrNull()?.relTo(projectDir) ?: file.path
         }
-        return Response(json.encodeToString(files))
-    }
-}
-
-class GetBookmarksTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
-    override val name = "rider_get_bookmarks"
-    override val description = """
-        Returns all bookmarks in the project with their file paths and line numbers.
-    """.trimIndent()
-
-    @Suppress("DEPRECATION")
-    override fun handle(project: Project, args: NoArgs): Response {
-        // ponytail: BookmarkManager API varies across IDE versions; using the stable one
-        val projectDir = project.projectDir()
-        try {
-            val bookmarkManager = BookmarkManager.getInstance(project)
-            val bookmarks = bookmarkManager.validBookmarks.map { bookmark ->
-                mapOf(
-                    "file" to (bookmark.file?.toNioPathOrNull()?.rel(projectDir) ?: "unknown"),
-                    "line" to (bookmark.line + 1),
-                    "description" to (bookmark.description ?: "")
-                )
-            }
-            return Response(json.encodeToString(bookmarks))
-        } catch (e: Exception) {
-            return Response(error = "Bookmarks API not available: ${e.message}")
-        }
+        return Response(mcpJson.encodeToString(files))
     }
 }

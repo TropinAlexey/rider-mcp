@@ -4,21 +4,21 @@ A JetBrains Rider plugin that extends the stock [MCP Server Plugin](https://gith
 
 ## Why This Exists
 
-Claude Code connects to Rider through JetBrains' built-in MCP Server plugin, which provides ~30 tools. But most of them either duplicate what Claude Code already does better natively (file reading/editing, git operations) or target specific ecosystems (Unreal Engine, Godot, xdebug/PHP).
+The stock JetBrains MCP Server plugin provides ~30 tools, but most of them either duplicate what MCP clients already do better natively (file reading/editing, git operations) or target specific ecosystems (Unreal Engine, Godot, xdebug/PHP).
 
-**The core problem: Claude is blind to what happens inside the IDE.**
+**The core problem: your AI assistant is blind to what happens inside the IDE.**
 
-A programmer staring at Rider sees dozens of information surfaces simultaneously — Build Output streaming in real time, Problems panel lighting up with errors, test runner trees expanding, progress bars showing indexing status, notifications popping up about package restores. Claude sees none of this.
+A programmer staring at Rider sees dozens of information surfaces simultaneously — Build Output streaming in real time, Problems panel lighting up with errors, test runner trees expanding, progress bars showing indexing status, notifications popping up about package restores. An MCP client sees none of this.
 
-When a build hangs, the programmer sees the build output frozen at "Building Project7..." — Claude sees nothing. When publish fails silently, the programmer sees a red notification balloon — Claude sees nothing. When zombie MSBuild nodes eat CPU, the programmer sees Activity Monitor — Claude sees nothing.
+When a build hangs, you see the output frozen at "Building Project7..." — your assistant sees nothing. When publish fails silently, you see a red notification balloon — your assistant sees nothing. When zombie MSBuild nodes eat CPU, you see Activity Monitor — your assistant sees nothing.
 
-This plugin bridges that gap. It gives Claude the same situational awareness a programmer has — the ability to see what the IDE is doing, what it's showing, and what's happening in the background.
+This plugin bridges that gap. It gives any MCP-compatible client (Claude Code, Cursor, Windsurf, Continue, custom agents) the same situational awareness a programmer has — the ability to see what the IDE is doing, what it's showing, and what's happening in the background.
 
 ### What the stock MCP plugin provides vs. what this adds
 
 | Capability | Stock MCP Plugin | This Extension |
 |---|---|---|
-| Read/edit files | ✅ (but Claude Code does it better) | — |
+| Read/edit files | ✅ (most clients do it natively) | — |
 | Build solution | ✅ start + final status | ✅ streaming output, cancel, progress |
 | See build errors | ✅ after build completes | ✅ real-time via Problems panel |
 | Process management | ❌ | ✅ list & kill IDE-managed processes |
@@ -36,14 +36,14 @@ This plugin bridges that gap. It gives Claude the same situational awareness a p
 This is **not a fork** of the JetBrains MCP Server plugin. It's a separate plugin that extends it through the official `mcpTool` extension point:
 
 ```
-Claude Code ←MCP→ JS proxy (mcp-jetbrains) ←HTTP→ Rider JVM
+MCP Client ←MCP→ JS proxy (mcp-jetbrains) ←HTTP→ Rider JVM
                                                     ├── MCP Server Plugin (JetBrains)
                                                     │   └── stock tools (~30)
                                                     └── Rider MCP Extension (this plugin)
-                                                        └── additional tools (~15+)
+                                                        └── additional tools (~12)
 ```
 
-All tools from both plugins appear as a unified set in Claude Code. Our tools are prefixed with `rider_` to avoid naming conflicts.
+All tools from both plugins appear as a unified set in any MCP client. Our tools are prefixed with `rider_` to avoid naming conflicts.
 
 ### Polling Pattern for Async Operations
 
@@ -53,29 +53,42 @@ MCP tools are synchronous (request → response). For long-running operations li
 2. `rider_get_build_output("build_1")` → returns new lines since last call
 3. Repeat until `status` is no longer `"running"`
 
-## Available Tools
+## Available Tools (12)
 
-### Build Observability (P0)
-- `rider_start_build` — Start solution build, get session ID
-- `rider_get_build_output` — Poll build output (streaming via polling)
-- `rider_cancel_build` — Cancel running build
+### Build (3 tools)
+| Tool | Description |
+|---|---|
+| `rider_start_build` | Start solution build, returns session ID for polling |
+| `rider_get_build_output` | Poll build output lines and status until completion |
+| `rider_cancel_build` | Cancel running build |
 
-### Process Management (P0)
-- `rider_list_processes` — List Rider-managed processes (MSBuild, compilers, dev servers)
-- `rider_kill_process` — Kill a process by name
+### Process Management (2 tools)
+| Tool | Description |
+|---|---|
+| `rider_list_processes` | List running processes (returns display names) |
+| `rider_kill_process` | Kill a process by display name |
 
-### IDE State (P0)
-- `rider_get_ide_state` — Current IDE activity (indexing, building, idle), active file
-- `rider_get_notifications` — Recent balloon notifications and event log
-- `rider_list_tool_windows` — All tool windows with visibility state
-- `rider_get_tool_window_content` — Content of a specific tool window
+### IDE State (4 tools)
+| Tool | Args | Description |
+|---|---|---|
+| `rider_get_ide_state` | — | Progress indicators, active file, busy status |
+| `rider_get_notifications` | `limit` (default 5) | Recent IDE notifications |
+| `rider_list_tool_windows` | `all` (default false) | Tool windows (visible only by default) |
+| `rider_get_tool_window_content` | `windowId` | Tab names of a tool window |
 
-### Programmer Context (P1)
-- `rider_get_open_editors` — Open editor tabs (MRU order)
-- `rider_get_cursor_context` — Current file, line, column, surrounding code
-- `rider_get_selection` — Currently selected text
-- `rider_get_recent_files` — Recently opened files
-- `rider_get_bookmarks` — All bookmarks with locations
+### Programmer Context (2 tools)
+| Tool | Description |
+|---|---|
+| `rider_get_context` | Active file + cursor + surrounding code + selection + open editors + bookmarks — all in one call |
+| `rider_get_recent_files` | 20 most recently opened files |
+
+### Token Efficiency
+
+Responses are optimized to minimize token consumption by the MCP client:
+- **Compact JSON** — false/empty fields omitted, only non-default values included
+- **Filtered defaults** — `rider_list_tool_windows` returns only visible windows, `rider_list_processes` only running ones
+- **Combined context** — `rider_get_context` replaces 5 separate tools (editors + cursor + selection + bookmarks) in a single round-trip
+- **Capped payloads** — notifications default to 5, tool windows to visible-only
 
 ## Installation
 

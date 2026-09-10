@@ -4,34 +4,31 @@
     <vendor url="https://github.com/tropin">tropin</vendor>
 
     <description><![CDATA[
-        Extends the JetBrains MCP Server plugin with full IDE observability and control for Rider.
-        Build output streaming, process management, test runner, IDE state, .NET debugger, NuGet, settings.
+        Extends the JetBrains MCP Server plugin with IDE observability and control for Rider.
+        Build management, process control, IDE state monitoring, editor context and bookmarks.
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.mcpServer</depends>
 
-    <!-- P0: Build observability -->
     <extensions defaultExtensionNs="com.intellij.mcpServer">
+        <!-- Build -->
         <mcpTool implementation="com.github.tropin.ridermcp.build.StartBuildTool"/>
         <mcpTool implementation="com.github.tropin.ridermcp.build.GetBuildOutputTool"/>
         <mcpTool implementation="com.github.tropin.ridermcp.build.CancelBuildTool"/>
 
-        <!-- P0: Process management -->
+        <!-- Process management -->
         <mcpTool implementation="com.github.tropin.ridermcp.process.ListProcessesTool"/>
         <mcpTool implementation="com.github.tropin.ridermcp.process.KillProcessTool"/>
 
-        <!-- P0: IDE state -->
+        <!-- IDE state -->
         <mcpTool implementation="com.github.tropin.ridermcp.ide.GetIdeStateTool"/>
         <mcpTool implementation="com.github.tropin.ridermcp.ide.GetNotificationsTool"/>
-        <mcpTool implementation="com.github.tropin.ridermcp.ide.GetToolWindowContentTool"/>
         <mcpTool implementation="com.github.tropin.ridermcp.ide.ListToolWindowsTool"/>
+        <mcpTool implementation="com.github.tropin.ridermcp.ide.GetToolWindowContentTool"/>
 
-        <!-- P1: Programmer context -->
-        <mcpTool implementation="com.github.tropin.ridermcp.context.GetOpenEditorsTool"/>
-        <mcpTool implementation="com.github.tropin.ridermcp.context.GetCursorContextTool"/>
-        <mcpTool implementation="com.github.tropin.ridermcp.context.GetSelectionTool"/>
+        <!-- Programmer context -->
+        <mcpTool implementation="com.github.tropin.ridermcp.context.GetContextTool"/>
         <mcpTool implementation="com.github.tropin.ridermcp.context.GetRecentFilesTool"/>
-        <mcpTool implementation="com.github.tropin.ridermcp.context.GetBookmarksTool"/>
     </extensions>
 </idea-plugin>
