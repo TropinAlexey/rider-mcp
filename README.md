@@ -26,7 +26,7 @@ This plugin bridges that gap. It gives any MCP-compatible client (Claude Code, C
 | Tool windows | ❌ | ✅ read any tool window content |
 | Notifications | ❌ | ✅ balloon messages, event log |
 | Programmer context | ❌ | ✅ open editors, cursor, selection |
-| Test runner | ❌ | 🔜 planned |
+| Test runner | ❌ | ✅ run, poll, rerun failed |
 | .NET debugger | Partial (xdebug only) | 🔜 planned |
 | NuGet management | ❌ | 🔜 planned |
 | IDE settings | ❌ | 🔜 planned |
@@ -40,7 +40,7 @@ MCP Client ←MCP→ JS proxy (mcp-jetbrains) ←HTTP→ Rider JVM
                                                     ├── MCP Server Plugin (JetBrains)
                                                     │   └── stock tools (~30)
                                                     └── Rider MCP Extension (this plugin)
-                                                        └── additional tools (~12)
+                                                        └── additional tools (~14)
 ```
 
 All tools from both plugins appear as a unified set in any MCP client. Our tools are prefixed with `rider_` to avoid naming conflicts.
@@ -133,11 +133,38 @@ cd rider-mcp
 See [TODO.md](TODO.md) for the full prioritized roadmap.
 
 **Next up:**
-- P1: Test Runner integration (run/poll/rerun tests)
 - P1: Run/Debug Configuration CRUD
 - P2: .NET Debugger (breakpoints, evaluate, step)
 - P2: NuGet management
 - P3: IDE Settings control
+
+## What's New
+
+### v0.2.0
+
+**Test Runner**
+- `rider_run_tests` — auto-detects test config or accepts `configName`; streams output via polling
+- `rider_rerun_failed_tests` — reruns previously failed tests via IDE action
+
+**Token Optimizations**
+- Merged 5 context tools → `rider_get_context` (single round-trip for file + cursor + selection + editors + bookmarks)
+- Unified polling: `rider_get_build_output` → `rider_get_output` (works for build, test, any future session)
+- Compact JSON responses — omit false/empty/null fields
+- `rider_get_notifications`: default limit 5, configurable via `limit` param
+- `rider_list_tool_windows`: visible-only by default, `all` param for full list
+- `rider_list_processes`: only running processes, response is array of names
+- Removed tool windows from `rider_get_ide_state` (use `rider_list_tool_windows`)
+
+**Bug Fixes**
+- Build polling now works: `ProjectTaskManager` with `onSuccess`/`onError` callbacks instead of fire-and-forget action
+- Thread safety: `@Volatile` on `OutputSession.status`/`exitCode`/`progress`
+- `CancelBuildTool`: proper `SimpleDataContext` with project binding
+- Session cleanup: timestamp-based TTL (10min) instead of remove-all
+- `canKill` field is now boolean, not string
+
+### v0.1.0
+
+Initial release — 15 tools: build observability, process management, IDE state, programmer context.
 
 ## License
 

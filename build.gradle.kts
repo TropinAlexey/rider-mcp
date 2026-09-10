@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.github.tropin"
-version = "0.1.0"
+version = "0.2.0"
 
 repositories {
     mavenCentral()
@@ -30,7 +30,7 @@ intellijPlatform {
             sinceBuild = "243"
         }
         changeNotes = """
-            Initial version — P0 tools: build observability, process management, IDE state.
+            v0.2.0: Test runner (run/rerun), unified polling, token-optimized responses, bug fixes.
         """.trimIndent()
     }
 }
