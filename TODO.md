@@ -22,7 +22,7 @@
 - [x] `rider_get_notifications` — balloon уведомления и event log
 - [x] `rider_list_tool_windows` — список tool windows с состоянием
 - [x] `rider_get_tool_window_content` — содержимое tool window (базовое)
-- [ ] Глубокая экстракция контента для Build Output, Problems, Event Log
+- [x] Глубокая экстракция контента для Build Output, Problems, Event Log
 - [ ] Подписка на новые уведомления (через polling session)
 
 ## P1 — Основной рабочий flow

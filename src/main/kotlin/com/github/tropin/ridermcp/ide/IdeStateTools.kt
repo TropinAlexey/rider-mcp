@@ -99,24 +99,82 @@ class ListToolWindowsTool : AbstractMcpTool<ListToolWindowsArgs>(ListToolWindows
 }
 
 @Serializable
-data class ToolWindowArgs(val windowId: String)
+data class ToolWindowArgs(val windowId: String, val tab: String? = null, val maxLines: Int = 200)
 
 class GetToolWindowContentTool : AbstractMcpTool<ToolWindowArgs>(ToolWindowArgs.serializer()) {
     override val name = "rider_get_tool_window_content"
-    override val description = "Returns tab names of a tool window. For build output use rider_get_build_output."
+    override val description = "Returns text content of a tool window. Extracts text from editors, consoles, trees, and lists. Pass tab name to read a specific tab; omit for the selected one. maxLines caps output (default 200)."
 
     override fun handle(project: Project, args: ToolWindowArgs): Response {
         val tw = ToolWindowManager.getInstance(project).getToolWindow(args.windowId)
             ?: return Response(error = "Tool window '${args.windowId}' not found")
 
-        val tabs = tw.contentManager.contents.map { it.displayName ?: "" }
-        val selected = tw.contentManager.selectedContent?.displayName
+        val cm = tw.contentManager
+        val content = if (args.tab != null) {
+            cm.contents.firstOrNull { it.displayName.equals(args.tab, ignoreCase = true) }
+                ?: return Response(error = "Tab '${args.tab}' not found. Available: ${cm.contents.map { it.displayName }}")
+        } else {
+            cm.selectedContent ?: cm.contents.firstOrNull()
+        } ?: return Response(error = "Tool window '${args.windowId}' has no content")
+
+        val lines = mutableListOf<String>()
+        val component = content.component
+        extractText(component, lines, args.maxLines)
 
         val result = buildJsonObject {
             put("windowId", args.windowId)
-            putJsonArray("tabs") { tabs.forEach { add(it) } }
-            selected?.let { put("selected", it) }
+            put("tab", content.displayName ?: "")
+            if (lines.isEmpty()) {
+                put("text", "(empty)")
+            } else {
+                put("text", lines.take(args.maxLines).joinToString("\n"))
+                if (lines.size > args.maxLines) put("truncated", true)
+            }
+            val tabs = cm.contents.map { it.displayName ?: "" }
+            if (tabs.size > 1) putJsonArray("otherTabs") { tabs.filter { it != (content.displayName ?: "") }.forEach { add(it) } }
         }
         return Response(result.toString())
+    }
+
+    private fun extractText(component: java.awt.Component, lines: MutableList<String>, limit: Int) {
+        if (lines.size >= limit) return
+        when (component) {
+            is com.intellij.openapi.editor.Editor -> {
+                val text = component.document.text
+                if (text.isNotBlank()) text.lines().forEach { if (lines.size < limit) lines.add(it) }
+            }
+            is javax.swing.JTree -> {
+                val model = component.model ?: return
+                val root = model.root ?: return
+                collectTreeText(model, root, lines, limit, 0)
+            }
+            is javax.swing.JList<*> -> {
+                val m = component.model
+                for (i in 0 until m.size) {
+                    if (lines.size >= limit) break
+                    lines.add(m.getElementAt(i)?.toString() ?: "")
+                }
+            }
+            is javax.swing.text.JTextComponent -> {
+                val text = component.text
+                if (!text.isNullOrBlank()) text.lines().forEach { if (lines.size < limit) lines.add(it) }
+            }
+            is java.awt.Container -> {
+                for (i in 0 until component.componentCount) {
+                    if (lines.size >= limit) break
+                    extractText(component.getComponent(i), lines, limit)
+                }
+            }
+        }
+    }
+
+    private fun collectTreeText(model: javax.swing.tree.TreeModel, node: Any, lines: MutableList<String>, limit: Int, depth: Int) {
+        if (lines.size >= limit) return
+        val indent = "  ".repeat(depth)
+        lines.add("$indent${node.toString()}")
+        for (i in 0 until model.getChildCount(node)) {
+            if (lines.size >= limit) break
+            collectTreeText(model, model.getChild(node, i), lines, limit, depth + 1)
+        }
     }
 }

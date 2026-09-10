@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.github.tropin"
-version = "0.2.0"
+version = "0.3.0"
 
 repositories {
     mavenCentral()
@@ -30,7 +30,7 @@ intellijPlatform {
             sinceBuild = "243"
         }
         changeNotes = """
-            v0.2.0: Test runner (run/rerun), unified polling, token-optimized responses, bug fixes.
+            v0.3.0: Deep tool window content extraction (editors, consoles, trees, lists).
         """.trimIndent()
     }
 }

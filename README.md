@@ -2,6 +2,8 @@
 
 A JetBrains Rider plugin that extends the stock [MCP Server Plugin](https://github.com/JetBrains/mcp-server-plugin) with full IDE observability and control tools.
 
+**Current version: 0.3.0** — deep tool window content extraction. [What's New →](#whats-new)
+
 ## Why This Exists
 
 The stock JetBrains MCP Server plugin provides ~30 tools, but most of them either duplicate what MCP clients already do better natively (file reading/editing, git operations) or target specific ecosystems (Unreal Engine, Godot, xdebug/PHP).
@@ -20,7 +22,7 @@ This plugin bridges that gap. It gives any MCP-compatible client (Claude Code, C
 |---|---|---|
 | Read/edit files | ✅ (most clients do it natively) | — |
 | Build solution | ✅ start + final status | ✅ streaming output, cancel, progress |
-| See build errors | ✅ after build completes | ✅ real-time via Problems panel |
+| See build errors | ✅ after build completes | ✅ real-time via Problems panel + deep text extraction |
 | Process management | ❌ | ✅ list & kill IDE-managed processes |
 | IDE state/progress | ❌ | ✅ indexing, building, publishing status |
 | Tool windows | ❌ | ✅ read any tool window content |
@@ -53,7 +55,7 @@ MCP tools are synchronous (request → response). For long-running operations li
 2. `rider_get_output("build_1")` → returns new lines since last call
 3. Repeat until `status` is no longer `"running"`
 
-## Available Tools (14)
+## Available Tools (13)
 
 ### Build (3 tools)
 | Tool | Description |
@@ -84,7 +86,7 @@ MCP tools are synchronous (request → response). For long-running operations li
 | `rider_get_ide_state` | — | Progress indicators, active file, busy status |
 | `rider_get_notifications` | `limit` (default 5) | Recent IDE notifications |
 | `rider_list_tool_windows` | `all` (default false) | Tool windows (visible only by default) |
-| `rider_get_tool_window_content` | `windowId` | Tab names of a tool window |
+| `rider_get_tool_window_content` | `windowId`, `tab?`, `maxLines?` | Text content of a tool window (editors, consoles, trees, lists). Defaults to selected tab, 200 lines |
 
 ### Programmer Context (2 tools)
 | Tool | Description |
@@ -143,6 +145,13 @@ See [TODO.md](TODO.md) for the full prioritized roadmap.
 - P3: IDE Settings control
 
 ## What's New
+
+### v0.3.0
+
+**Deep Tool Window Content Extraction**
+- `rider_get_tool_window_content` now extracts real text from any tool window — editors, consoles, trees, lists
+- New params: `tab` (specific tab name), `maxLines` (default 200)
+- Read Build Output, Problems, Event Log, Run/Debug output directly without polling
 
 ### v0.2.0
 
