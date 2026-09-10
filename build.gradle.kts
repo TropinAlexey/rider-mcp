@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.github.tropin"
-version = "0.3.0"
+version = "0.4.0"
 
 repositories {
     mavenCentral()
@@ -30,7 +30,7 @@ intellijPlatform {
             sinceBuild = "243"
         }
         changeNotes = """
-            v0.3.0: Deep tool window content extraction (editors, consoles, trees, lists).
+            v0.4.0: Run/Debug Configuration CRUD (create, update, delete).
         """.trimIndent()
     }
 }

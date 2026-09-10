@@ -39,9 +39,9 @@
 - [ ] Фильтрация: запуск тестов по file/class/method
 
 ### Run/Debug Configuration Management
-- [ ] `rider_create_run_config` — создание новой конфигурации
-- [ ] `rider_update_run_config` — изменение параметров (env, args, pre-build)
-- [ ] `rider_delete_run_config` — удаление
+- [x] `rider_create_run_config` — создание новой конфигурации
+- [x] `rider_update_run_config` — изменение параметров (env, args, rename)
+- [x] `rider_delete_run_config` — удаление
 
 ## P2 — Расширенные возможности
 

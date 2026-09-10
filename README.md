@@ -2,7 +2,7 @@
 
 A JetBrains Rider plugin that extends the stock [MCP Server Plugin](https://github.com/JetBrains/mcp-server-plugin) with full IDE observability and control tools.
 
-**Current version: 0.3.0** — deep tool window content extraction. [What's New →](#whats-new)
+**Current version: 0.4.0** — run config CRUD. [What's New →](#whats-new)
 
 ## Why This Exists
 
@@ -29,6 +29,7 @@ This plugin bridges that gap. It gives any MCP-compatible client (Claude Code, C
 | Notifications | ❌ | ✅ balloon messages, event log |
 | Programmer context | ❌ | ✅ open editors, cursor, selection |
 | Test runner | ❌ | ✅ run, poll, rerun failed |
+| Run config CRUD | ❌ | ✅ create, update, delete |
 | .NET debugger | Partial (xdebug only) | 🔜 planned |
 | NuGet management | ❌ | 🔜 planned |
 | IDE settings | ❌ | 🔜 planned |
@@ -55,7 +56,7 @@ MCP tools are synchronous (request → response). For long-running operations li
 2. `rider_get_output("build_1")` → returns new lines since last call
 3. Repeat until `status` is no longer `"running"`
 
-## Available Tools (13)
+## Available Tools (16)
 
 ### Build (3 tools)
 | Tool | Description |
@@ -87,6 +88,13 @@ MCP tools are synchronous (request → response). For long-running operations li
 | `rider_get_notifications` | `limit` (default 5) | Recent IDE notifications |
 | `rider_list_tool_windows` | `all` (default false) | Tool windows (visible only by default) |
 | `rider_get_tool_window_content` | `windowId`, `tab?`, `maxLines?` | Text content of a tool window (editors, consoles, trees, lists). Defaults to selected tab, 200 lines |
+
+### Run Configuration CRUD (3 tools)
+| Tool | Args | Description |
+|---|---|---|
+| `rider_create_run_config` | `name`, `typeId`, `env?`, `programArgs?` | Create a run config. Use stock `get_run_configurations` for available types |
+| `rider_update_run_config` | `name`, `env?`, `programArgs?`, `newName?` | Update env, args, or rename |
+| `rider_delete_run_config` | `name` | Delete a run configuration |
 
 ### Programmer Context (2 tools)
 | Tool | Description |
@@ -139,12 +147,20 @@ gradlew.bat runIde
 See [TODO.md](TODO.md) for the full prioritized roadmap.
 
 **Next up:**
-- P1: Run/Debug Configuration CRUD
+- P1: Test result tree with stack traces (SMTestProxy)
 - P2: .NET Debugger (breakpoints, evaluate, step)
 - P2: NuGet management
 - P3: IDE Settings control
 
 ## What's New
+
+### v0.4.0
+
+**Run/Debug Configuration CRUD**
+- `rider_create_run_config` — create with typeId, env vars, program args
+- `rider_update_run_config` — modify env, args, or rename
+- `rider_delete_run_config` — delete by name
+- Uses `CommonProgramRunConfigurationParameters` for type-safe parameter access
 
 ### v0.3.0
 
