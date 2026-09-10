@@ -5,7 +5,7 @@
 
     <description><![CDATA[
         Extends the JetBrains MCP Server plugin with IDE observability and control for Rider.
-        Build management, process control, IDE state monitoring, editor context and bookmarks.
+        Build management, test runner, process control, IDE state monitoring, editor context.
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
@@ -14,7 +14,7 @@
     <extensions defaultExtensionNs="com.intellij.mcpServer">
         <!-- Build -->
         <mcpTool implementation="com.github.tropin.ridermcp.build.StartBuildTool"/>
-        <mcpTool implementation="com.github.tropin.ridermcp.build.GetBuildOutputTool"/>
+        <mcpTool implementation="com.github.tropin.ridermcp.build.GetOutputTool"/>
         <mcpTool implementation="com.github.tropin.ridermcp.build.CancelBuildTool"/>
 
         <!-- Process management -->
@@ -26,6 +26,10 @@
         <mcpTool implementation="com.github.tropin.ridermcp.ide.GetNotificationsTool"/>
         <mcpTool implementation="com.github.tropin.ridermcp.ide.ListToolWindowsTool"/>
         <mcpTool implementation="com.github.tropin.ridermcp.ide.GetToolWindowContentTool"/>
+
+        <!-- Test runner -->
+        <mcpTool implementation="com.github.tropin.ridermcp.testing.RunTestsTool"/>
+        <mcpTool implementation="com.github.tropin.ridermcp.testing.RerunFailedTestsTool"/>
 
         <!-- Programmer context -->
         <mcpTool implementation="com.github.tropin.ridermcp.context.GetContextTool"/>

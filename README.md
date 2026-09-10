@@ -49,18 +49,28 @@ All tools from both plugins appear as a unified set in any MCP client. Our tools
 
 MCP tools are synchronous (request → response). For long-running operations like builds and test runs, we use a polling pattern:
 
-1. `rider_start_build` → returns `{"sessionId": "build_1"}`
-2. `rider_get_build_output("build_1")` → returns new lines since last call
+1. `rider_start_build` / `rider_run_tests` → returns `{"sessionId": "build_1"}`
+2. `rider_get_output("build_1")` → returns new lines since last call
 3. Repeat until `status` is no longer `"running"`
 
-## Available Tools (12)
+## Available Tools (14)
 
 ### Build (3 tools)
 | Tool | Description |
 |---|---|
-| `rider_start_build` | Start solution build, returns session ID for polling |
-| `rider_get_build_output` | Poll build output lines and status until completion |
+| `rider_start_build` | Start solution build, returns session ID |
 | `rider_cancel_build` | Cancel running build |
+
+### Test Runner (2 tools)
+| Tool | Args | Description |
+|---|---|---|
+| `rider_run_tests` | `configName?` | Run tests. Auto-detects config if one exists; lists available if multiple |
+| `rider_rerun_failed_tests` | — | Rerun previously failed tests |
+
+### Shared Polling
+| Tool | Args | Description |
+|---|---|---|
+| `rider_get_output` | `sessionId` | Poll output for any async session (build, test). Returns new lines since last call |
 
 ### Process Management (2 tools)
 | Tool | Description |
@@ -88,6 +98,7 @@ Responses are optimized to minimize token consumption by the MCP client:
 - **Compact JSON** — false/empty fields omitted, only non-default values included
 - **Filtered defaults** — `rider_list_tool_windows` returns only visible windows, `rider_list_processes` only running ones
 - **Combined context** — `rider_get_context` replaces 5 separate tools (editors + cursor + selection + bookmarks) in a single round-trip
+- **Unified polling** — `rider_get_output` works for any async session (build, test), no duplicate poll tools
 - **Capped payloads** — notifications default to 5, tool windows to visible-only
 
 ## Installation

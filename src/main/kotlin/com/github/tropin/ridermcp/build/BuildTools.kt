@@ -8,20 +8,17 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.task.ProjectTaskManager
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
 import org.jetbrains.ide.mcp.NoArgs
 import org.jetbrains.ide.mcp.Response
 import org.jetbrains.mcpserverplugin.AbstractMcpTool
 import com.github.tropin.ridermcp.SessionManager
 import com.github.tropin.ridermcp.mcpJson
+import kotlinx.serialization.encodeToString
 
 class StartBuildTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
     override val name = "rider_start_build"
-    override val description = """
-        Starts a solution build in Rider and returns a session ID.
-        Use rider_get_build_output with the returned sessionId to poll build status.
-        Returns: {"sessionId": "build_1"}
-    """.trimIndent()
+    override val description = "Starts a solution build, returns sessionId. Poll with rider_get_output."
 
     override fun handle(project: Project, args: NoArgs): Response {
         val session = SessionManager.create("build")
@@ -50,42 +47,29 @@ class StartBuildTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
 @Serializable
 data class SessionIdArgs(val sessionId: String)
 
-@Serializable
-data class BuildOutputResult(
-    val status: String,
-    val newLines: List<String>,
-    val progress: Double,
-    val exitCode: Int? = null
-)
-
-class GetBuildOutputTool : AbstractMcpTool<SessionIdArgs>(SessionIdArgs.serializer()) {
-    override val name = "rider_get_build_output"
-    override val description = """
-        Returns new build output lines since last call for the given session.
-        Poll this repeatedly until status is not "running".
-        Returns: {"status": "running|succeeded|failed|cancelled", "newLines": [...], "progress": 0.0-1.0, "exitCode": 0|1|null}
-    """.trimIndent()
+class GetOutputTool : AbstractMcpTool<SessionIdArgs>(SessionIdArgs.serializer()) {
+    override val name = "rider_get_output"
+    override val description = "Polls output for any session (build, test). Returns new lines since last call. Poll until status is not \"running\"."
 
     override fun handle(project: Project, args: SessionIdArgs): Response {
         val session = SessionManager.get(args.sessionId)
             ?: return Response(error = "Session '${args.sessionId}' not found")
 
-        val result = BuildOutputResult(
-            status = session.status,
-            newLines = session.getNewLines(),
-            progress = session.progress,
-            exitCode = session.exitCode
-        )
-        return Response(mcpJson.encodeToString(result))
+        val newLines = session.getNewLines()
+        val result = buildJsonObject {
+            put("status", session.status)
+            if (newLines.isNotEmpty()) {
+                putJsonArray("lines") { newLines.forEach { add(it) } }
+            }
+            session.exitCode?.let { put("exitCode", it) }
+        }
+        return Response(result.toString())
     }
 }
 
 class CancelBuildTool : AbstractMcpTool<NoArgs>(NoArgs.serializer()) {
     override val name = "rider_cancel_build"
-    override val description = """
-        Cancels the currently running build in Rider.
-        Returns "ok" if cancellation was requested.
-    """.trimIndent()
+    override val description = "Cancels the currently running build."
 
     override fun handle(project: Project, args: NoArgs): Response {
         val action = ActionManager.getInstance().getAction("Stop")

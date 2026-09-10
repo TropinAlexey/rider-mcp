@@ -28,17 +28,15 @@
 ## P1 — Основной рабочий flow
 
 ### Programmer Context
-- [x] `rider_get_open_editors` — открытые вкладки (MRU)
-- [x] `rider_get_cursor_context` — файл, строка, окружающий код
-- [x] `rider_get_selection` — выделенный текст
+- [x] `rider_get_context` — объединённый: файл + курсор + код + выделение + вкладки + закладки
 - [x] `rider_get_recent_files` — последние открытые файлы
-- [x] `rider_get_bookmarks` — закладки
 
 ### Test Runner
-- [ ] `rider_run_tests` — запуск тестов (all / project / filter / file / method)
-- [ ] `rider_get_test_output` — polling результатов (passed/failed/skipped)
-- [ ] `rider_rerun_failed_tests` — перезапуск упавших
-- [ ] Дерево результатов с stack traces
+- [x] `rider_run_tests` — запуск тестов (auto-detect config или по имени)
+- [x] `rider_get_output` — единый polling tool для build/test/любых сессий
+- [x] `rider_rerun_failed_tests` — перезапуск упавших через IDE action
+- [ ] Дерево результатов с stack traces (извлечение из SMTestProxy)
+- [ ] Фильтрация: запуск тестов по file/class/method
 
 ### Run/Debug Configuration Management
 - [ ] `rider_create_run_config` — создание новой конфигурации
@@ -88,5 +86,6 @@
 - [ ] Настроить CI (GitHub Actions) для сборки плагина
 - [ ] Опубликовать в JetBrains Marketplace (после стабилизации)
 - [ ] Протестировать совместимость с Rider 2025.1
-- [ ] Написать README.md с инструкцией по установке
-- [ ] Проверить что `build.gradle.kts` собирает с Rider (RD) а не IntelliJ Community (IC)
+- [x] Написать README.md с инструкцией по установке
+- [x] Проверить что `build.gradle.kts` собирает с Rider (RD) а не IntelliJ Community (IC)
+- [x] Код-ревью + оптимизация токенов (15→12 tools, compact JSON)
